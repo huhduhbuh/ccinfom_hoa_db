@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS individual (
   gender			ENUM('M', 'F') NOT NULL,
   fb_url			VARCHAR(45) NULL,
   picture			BLOB NOT NULL,
-  indiv_type		ENUM('R', 'H', 'HR') NOT NULL,
+  indiv_type		ENUM('R', 'H', 'HR', 'O') NOT NULL,
   PRIMARY KEY		(individual_id),
   UNIQUE INDEX		(email ASC),
   UNIQUE INDEX		(fb_url ASC)
@@ -471,7 +471,7 @@ CREATE TABLE IF NOT EXISTS incidents (
 	incident_id INT NOT NULL,
     date_occurred DATE NOT NULL,
     description VARCHAR(100) NOT NULL,
-    penalty_imposed VARCHAR(100) NOT NULL,
+    penalty_imposed DECIMAL NOT NULL,
     rule_violated INT NOT NULL,
     investigating_officer_id INT(5) NOT NULL,
     seconding_officer_id INT(5) NOT NULL,
@@ -491,16 +491,15 @@ CREATE TABLE IF NOT EXISTS incidents (
 DROP TABLE IF EXISTS persons_involved;
 CREATE TABLE IF NOT EXISTS persons_involved (
 	incident_id INT NOT NULL,
-    lastname VARCHAR(45) NOT NULL,
-	firstname VARCHAR(45) NOT NULL,
+	individual_id INT NOT NULL,
     is_resident BOOLEAN NOT NULL,
-    resident_id INT(5),
     INDEX (incident_id ASC), 
-    PRIMARY KEY (incident_id, lastname, firstname),
+    PRIMARY KEY (incident_id, individual_id),
     FOREIGN KEY (incident_id)
 		REFERENCES incidents(incident_id),
-	FOREIGN KEY (resident_id)
-		REFERENCES resident(resident_id)
+	INDEX (individual_id ASC),
+	FOREIGN KEY (individual_id)
+		REFERENCES individual(individual_id)
 );
 
 -- -----------------------------------------------------
@@ -510,12 +509,10 @@ DROP TABLE IF EXISTS evidence;
 CREATE TABLE IF NOT EXISTS evidence (
 	evidence_id INT NOT NULL,
     evidence_name VARCHAR(45) NOT NULL,
-    description VARCHAR(45) NOT NULL,
-    filename VARCHAR(45) NOT NULL,
-    date_submitted DATE NOT NULL,
     incident_id INT NOT NULL,
     submitting_resident_id INT(5) NOT NULL,
     accepting_officer_id INT(5) NOT NULL,
+    file_id INT NOT NULL,
     INDEX (evidence_id ASC),
     PRIMARY KEY (evidence_id),
     INDEX (incident_id ASC),
@@ -525,10 +522,29 @@ CREATE TABLE IF NOT EXISTS evidence (
     FOREIGN KEY (submitting_resident_id)
 		REFERENCES resident(resident_id),
 	INDEX (accepting_officer_id ASC),
-    FOREIGN KEY (accepting_officer_id ASC)
-		REFERENCES hoa_officer(officer_id)
+    FOREIGN KEY (accepting_officer_id)
+		REFERENCES hoa_officer(officer_id),
+	INDEX (file_id ASC),
+	FOREIGN KEY (file_id)
+		REFERENCES hoa_files(file_id)
 );
 
+-- -----------------------------------------------------
+-- Table asset_incidents
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS asset_incidents;
+CREATE TABLE asset_incidents (
+	asset_id VARCHAR(10) NOT NULL,
+    incident_id INT NOT NULL,
+    event_type ENUM('transfer', 'rental') NOT NULL,
+    PRIMARY KEY (asset_id, incident_id),
+    INDEX (asset_id ASC),
+    FOREIGN KEY (asset_id)
+		REFERENCES asset(asset_id),
+	INDEX (incident_id ASC),
+    FOREIGN KEY (incident_id)
+		REFERENCES incidents(incident_id)
+);
 
 -- -----------------------------------------------------
 -- Add records to regions
@@ -763,20 +779,34 @@ INSERT INTO	residential_prop
 -- Add records to incidents
 -- -----------------------------------------------------
 INSERT INTO incidents
-	VALUES 	(1, '2023-06-21', 'Car theft', 'P1,000,000 fine', 14, 99901, 99902),
-			(2, '2023-10-09', 'Data security incident', 'P100,000,000 fine', 101, 99901, 99902);
+	VALUES 	(1, '2023-06-21', 'LED Projector damage', 1000000, 14, 99901, 99902),
+			(2, '2023-10-09', 'Basketball Court Vandalism', 100000000, 101, 99901, 99902);
     
 -- -----------------------------------------------------
 -- Add records to persons_involved
 -- -----------------------------------------------------
+INSERT INTO individual
+	VALUES	(2023202416, 'Doe', 'John', 'P', 'johndoe@gmail.com', '1999-11-11', 'M', 'jdoe', 'pic10.jpg', 'O');
+
 INSERT INTO persons_involved
-	VALUES	(1, 'Doe', 'John', 0, NULL),
-			(1, 'Dela Cruz', 'Juanita', 1, 40012),
-			(2, 'Dela Cruz', 'Juan', 1, 40011);
-            
+	VALUES	(1, 2023202416, 0),
+			(1, 2023202411, 1),
+			(2, 2023202410, 1);
+		            
 -- -----------------------------------------------------
 -- Add records to persons_involved
 -- -----------------------------------------------------
+INSERT INTO hoa_files
+	VALUES	(100000000, 'broken_projector.jpg', 'Picture of broken projector','D:/Animo HOA Documents/Evidence Files/', 'image', '2023-06-10', 'Jose Rizal', 99901, 'Animo HOA'),
+			(200000000, 'graffiti.png', 'Picture of graffiti','D:/Animo HOA Documents/Evidence Files/', 'image', '2023-10-16', 'Juan Dela Cruz', 99902, 'Animo HOA');
+            
 INSERT INTO evidence
-	VALUES	(1, 'CCTV Footage', 'CCTV footage of car being stolen', '2023-06-10.mp4', '2023-06-10', 1, 40011, 99901),
-			(2, 'Log files', 'Server log files that track network activity', 'logs.txt', '2023-10-16', 2, 40013, 99902);
+	VALUES	(1, 'Broken Projector', 1, 40011, 99901, 100000000),
+			(2, 'Graffiti', 2, 40013, 99902, 200000000);
+            
+-- -----------------------------------------------------
+-- Add records to asset_incidents
+-- -----------------------------------------------------
+INSERT INTO asset_incidents
+	VALUES 	('E000000001', 1, 'transfer'),
+			('P000000002', 2, 'rental');
